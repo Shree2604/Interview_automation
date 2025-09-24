@@ -1552,12 +1552,304 @@
   }
 }
 
-@keyframes user-speaking-pulse {
-  0%, 100% { 
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(34, 197, 94, 0.4);
+/* WebSocket Indicator */
+.websocket-indicator {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--primary-blue-light);
+  border: 2px solid var(--primary-blue);
+  border-radius: 12px;
+  text-align: center;
+  animation: websocket-connected-fade-in 0.5s ease-in-out;
+}
+
+.websocket-status {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-blue);
+  margin-bottom: 0.5rem;
+}
+
+.websocket-message {
+  font-size: 0.9rem;
+  color: var(--gray-700);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.manual-display-button {
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.manual-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.manual-next-button {
+  background: var(--success-green);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.manual-next-button:hover {
+  background: var(--success-green-hover);
+}
+
+/* Add these styles to the existing User.css file */
+
+/* Dynamic text sizing classes */
+.text-xs {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.text-base {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.7;
+}
+
+/* Enhanced speech bubble with dynamic sizing */
+.speech-bubble {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 1.25rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  min-height: 80px;
+  max-height: 250px;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s ease;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.speech-bubble.ai-bubble {
+  border-left: 4px solid #3b82f6;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(255, 255, 255, 0.9));
+}
+
+.speech-bubble.user-bubble {
+  border-left: 4px solid #22c55e;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(255, 255, 255, 0.9));
+}
+
+/* Enhanced speech text with better responsiveness */
+.speech-text {
+  color: #374151;
+  font-weight: 500;
+  text-align: center;
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.speech-text.ai-speaking {
+  color: #2563eb;
+  font-weight: 600;
+  animation: ai-glow 2s ease-in-out infinite alternate;
+}
+
+.speech-text.user-speaking {
+  color: #16a34a;
+  font-weight: 600;
+  font-style: italic;
+  animation: user-glow 2s ease-in-out infinite alternate;
+}
+
+/* Glowing animations for speaking states */
+@keyframes ai-glow {
+  from {
+    text-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
+    transform: scale(1);
   }
-  50% { 
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2), 0 0 0 20px rgba(34, 197, 94, 0.1);
+  to {
+    text-shadow: 0 0 20px rgba(37, 99, 235, 0.6);
+    transform: scale(1.02);
   }
 }
 
+@keyframes user-glow {
+  from {
+    text-shadow: 0 0 5px rgba(22, 163, 74, 0.3);
+    transform: scale(1);
+  }
+  to {
+    text-shadow: 0 0 20px rgba(22, 163, 74, 0.6);
+    transform: scale(1.02);
+  }
+}
+
+/* Enhanced avatar circles with emoji support */
+.avatar-circle {
+  width: 10rem;
+  height: 10rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem; /* Increased for better emoji visibility */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar-circle.ai-avatar {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8, #1e40af);
+  color: white;
+}
+
+.avatar-circle.user-avatar {
+  background: linear-gradient(135deg, #22c55e, #16a34a, #15803d);
+  color: white;
+}
+
+/* Enhanced speaking animations */
+.avatar-circle.speaking {
+  animation: speaking-pulse 1.5s ease-in-out infinite;
+  transform: scale(1.1);
+}
+
+/* Improved microphone button states */
+.microphone-button {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary-blue);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+.microphone-button:hover:not(.disabled) {
+  transform: scale(1.05);
+  background: var(--primary-blue-hover);
+  box-shadow: var(--shadow-xl);
+}
+
+.microphone-button.listening {
+  background: var(--error-red);
+  animation: mic-pulse 2s infinite;
+}
+
+.microphone-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  background: var(--gray-400);
+}
+
+.microphone-button.disabled:hover {
+  transform: none;
+  background: var(--gray-400);
+}
+
+/* Enhanced status messages */
+.status-message {
+  font-size: 0.95rem;
+  color: #374151;
+  margin-top: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(10px);
+}
+
+/* Responsive improvements for mobile */
+@media (max-width: 768px) {
+  .avatar-circle {
+    width: 8rem;
+    height: 8rem;
+    font-size: 3rem;
+  }
+  
+  .speech-bubble {
+    padding: 1rem;
+    min-height: 60px;
+    max-height: 180px;
+  }
+  
+  .microphone-button {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .speech-text {
+    padding: 0.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .avatar-circle {
+    width: 7rem;
+    height: 7rem;
+    font-size: 2.5rem;
+  }
+  
+  .speech-bubble {
+    padding: 0.75rem;
+    min-height: 50px;
+    max-height: 150px;
+  }
+  
+  .microphone-button {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .interview-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .ai-agent-side,
+  .user-side {
+    margin: 0;
+    padding: 1rem 1.5rem;
+  }
+}
