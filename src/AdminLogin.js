@@ -9,7 +9,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import './AdminLogin.css';
-import { api } from "./api"
+import { api } from "./api";
 
 function AdminLogin({ onLogin }) {
   const [credentials, setCredentials] = useState({
@@ -72,6 +72,7 @@ function AdminLogin({ onLogin }) {
 
       if ((response.status_code == 200)) {
         localStorage.setItem("jwtToken", response.access_token);
+        localStorage.setItem("refresh", response.refresh_token);
 
         setIsSuccess(true);
         const userData = await api.get('users/getuser');

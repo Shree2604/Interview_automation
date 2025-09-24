@@ -13,10 +13,10 @@ import {
 import ThankYou from './ThankYou';
 import './User.css';
 import MobileNumberScreen from './MobileNumber';
-
+import websocketService from "./WebsocketService";
 // Questions for the interview
 const INTERVIEW_QUESTIONS = [
-  "Can you tell us why you're interested in working in early childhood education?"
+  "Can you tell us why you're interested in working in early childhood education? Can you tell us why you're interested in working in early childhood education? Can you tell us why you're interested in working in early childhood education? Can you tell us why you're interested in working in early childhood education? Can you tell us why you're interested in working in early childhood education? Can you tell us why you're interested in working in early childhood education? Can you tell us why you're interested in working in early childhood education? Can you tell us why you're interested in working in early childhood education?"
 ];
 
 const SpeechInterviewApp = ({ onLogout, currentUser }) => {
@@ -37,7 +37,8 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const streamRef = useRef(null);
-
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
   // Initialize speech synthesis
   useEffect(() => {
     if ('speechSynthesis' in window) {
@@ -64,7 +65,27 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
       }
     };
   }, []);
+// web socket connection
+useEffect(() => {
+    const token = localStorage.getItem("jwtToken");
 
+    websocketService.connect(
+      token,
+      (msg) => setMessages((prev) => [...prev, msg]), // onMessage
+      () => console.log("Connected to server"),       // onOpen
+      () => console.log("Connection closed"),         // onClose
+      (err) => console.error("Error:", err)           // onError
+    );
+
+    return () => {
+      websocketService.close();
+    };
+  }, []);
+
+  const sendMessage = () => {
+    websocketService.send(input);
+    setInput("");
+  };
   // Cleanup audio resources
   useEffect(() => {
     return () => {

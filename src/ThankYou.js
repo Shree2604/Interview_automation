@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import './ThankYou.css';
+import { api } from "./api"
 
-function ThankYou({ onReturnHome }) {
+function ThankYou() {
   const [registration, setRegistration] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,16 +50,42 @@ function ThankYou({ onReturnHome }) {
         </p>
         
         <div className="thankyou-actions">
-          <button className="thankyou-btn" onClick={() => {
-            try {
-              localStorage.removeItem('interviewSessionToken');
-            } catch {}
-            if (typeof onReturnHome === 'function') {
-              onReturnHome();
-            } else {
-              window.location.href = '/';
-            }
-          }}>Return to Home</button>
+          <button
+  className="thankyou-btn"
+  onClick={async () => {
+    try {
+      const refreshToken = localStorage.getItem("jwtToken");
+
+      if (refreshToken) {
+        // 🔹 Call your API before redirect
+       const response = await api.post('users/logout', {
+        refresh_token: refreshToken
+        })
+      }
+
+      // 🔹 Clear token
+      localStorage.removeItem("refresh");
+      localStorage.removeItem("jwtToken");
+      localStorage.removeItem("userInfo");
+
+
+      // 🔹 Navigate back
+      if (response.status_code == 200) {
+       window.location.href = "/";
+      } else {
+        window.location.href = "/";
+      }
+    } catch (err) {
+      console.error("Error completing interview:", err);
+      // You could still redirect even if API fails
+      // localStorage.removeItem("interviewSessionToken");
+      window.location.href = "/";
+    }
+  }}
+>
+  Return to Home
+</button>
+
         </div>
       </div>
     </div>

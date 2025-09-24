@@ -33,9 +33,9 @@ const [submitted, setSubmitted] = useState(false);
       const response =await api.post('users/phone',
          { phone_number: mobile }
         )
-//  if ((response.status_code == 200) || (response.status_code == 201)) {
-        setSubmitted(true); // ✅ show ThankYou component
-    //   }
+ if ((response.status_code == 200) || (response.status_code == 201)) {
+        setSubmitted(true); 
+      }
     //   const data = await response.json();
     //   console.log("API response:", data);
     
@@ -48,7 +48,7 @@ const [submitted, setSubmitted] = useState(false);
     }
   };
  if (submitted) {
-    return <ThankYou onReturnHome={handleReturnHome}/>; // ✅ show ThankYou after success
+    return <ThankYou/>; // ✅ show ThankYou after success
   }
   return (
     <div style={styles.container}>

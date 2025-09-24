@@ -61,14 +61,16 @@ function AdminDashboard({ onLogout }) {
   const fetchRegistrations = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/interview-registrations/stats/overview');
+      const response =  await api.get('admin/getCandidatesHistory',{
+        status: 'all'
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch registrations');
       }
-      const result = await response.json();
+      const result = await response;
       
       // Handle the new API format that matches MongoDB structure
-      if (result.success && result.data) {
+      if ((result.status_code == 200) || (result.status_code == 201)) {
         setRegistrations(result.data);
         
         // Calculate stats from the data
