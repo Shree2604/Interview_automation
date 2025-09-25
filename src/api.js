@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://13.232.165.226/"; // replace with your API URL
+const API_BASE_URL = "http://13.232.165.226/api/"; // replace with your API URL
 
 // Get JWT from localStorage
 const getToken = () => localStorage.getItem("jwtToken");

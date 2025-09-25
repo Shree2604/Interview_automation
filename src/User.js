@@ -74,7 +74,7 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
+      recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'en-US';
 
@@ -183,7 +183,8 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
         }
       },
       () => console.log("✅ Connected to server"),
-      () => console.log("❌ Connection closed"),
+      () =>{ console.log("❌ Connection closed");
+      },
       (err) => console.error("❌ WebSocket Error:", err)
     );
 
@@ -229,9 +230,9 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
         if (storedMessages.length >= 2) {
           console.log("🎯 Playing Question 2");
           setFlowState('playing-q2');
-          setCurrentAIContent(storedMessages[1]);
-          addToConversation('ai', storedMessages[1]);
-          speakText(storedMessages[1], () => {
+          setCurrentAIContent(storedMessages[storedMessages.length-1]);
+          addToConversation('ai', storedMessages[storedMessages.length-1]);
+          speakText(storedMessages[storedMessages.length-1], () => {
             console.log("✅ Question 2 finished, enabling user interaction");
             
             // Step 4: Enable user interaction
@@ -284,14 +285,16 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
       }, 3000);
     });
   }, [storedMessages, speechRecognitionReady]);
-
+  useEffect(() => {
+    if (storedMessages.length > 2) {
+      const lastMessage = storedMessages[storedMessages.length - 1];
+      checkResponsePlay(lastMessage);
+    }
+  }, [storedMessages]);
   // Send user response
   const sendUserResponse = useCallback((userResponse) => {
     const responseData = {
-      type: 'user_response',
-      content: userResponse,
-      timestamp: new Date().toISOString(),
-      user_id: currentUser?.id || 'anonymous'
+      answer: userResponse,
     };
     
     console.log("📤 Sending user response:", responseData);
@@ -307,12 +310,50 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
     }
     
     // Wait 2 seconds then go to thank you screen
-    setTimeout(() => {
+    // setTimeout(() => {
+    //   console.log("✅ Going to thank you screen");
+    //   setCurrentStep('thankyou');
+    // }, 2000);
+  }, [currentUser]);
+ const checkResponsePlay = useCallback(() => {
+  console.log("🎯 Playing Question 2");
+          setFlowState('playing-q2');
+          setCurrentAIContent(storedMessages[storedMessages.length-1]);
+          addToConversation('ai', storedMessages[storedMessages.length-1]);
+          speakText(storedMessages[storedMessages.length-1], () => {
+            console.log("✅ Question 2 finished, enabling user interaction");
+            
+            // Step 4: Enable user interaction
+            setFlowState('user-turn');
+            setCanInteract(true);
+            setIsAISpeaking(false);
+            
+            // Auto-start listening after a brief delay
+            setTimeout(() => {
+              if (recognitionRef.current && speechRecognitionReady) {
+                console.log("🎤 Auto-starting listening...");
+                try {
+                  recognitionRef.current.start();
+                } catch (e) {
+                  console.warn('Error auto-starting recognition:', e);
+                }
+              }
+            }, 1000);
+          });
+        if(storedMessages[storedMessages.length-1].includes("Thanks")){
+           setTimeout(() => {
       console.log("✅ Going to thank you screen");
       setCurrentStep('thankyou');
-    }, 2000);
-  }, [currentUser]);
-
+       if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.warn('Error stopping recognition:', e);
+      }
+    }
+    }, 5000);
+        }
+ });
   // Cleanup
   useEffect(() => {
     return () => {

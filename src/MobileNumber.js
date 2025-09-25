@@ -34,12 +34,16 @@ const [submitted, setSubmitted] = useState(false);
          { phone_number: mobile }
         )
  if ((response.status_code == 200) || (response.status_code == 201)) {
+      alert("Mobile number submitted successfully!");
         setSubmitted(true); 
+      }
+      else{
+      alert("Mobile number already exists!");
+
       }
     //   const data = await response.json();
     //   console.log("API response:", data);
     
-      alert("Mobile number submitted successfully!");
     } catch (err) {
       console.error(err);
       setError("Failed to submit. Try again.");
