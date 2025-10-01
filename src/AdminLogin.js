@@ -59,17 +59,6 @@ function AdminLogin({ onLogin }) {
           email: credentials.username,
           password: credentials.password
         })
-      //  await fetch('http://13.232.165.226/users/login', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     email: credentials.username,
-      //     password: credentials.password
-      //   })
-      // });
-
       if ((response.status_code == 200)) {
         localStorage.setItem("jwtToken", response.access_token);
         localStorage.setItem("refresh", response.refresh_token);

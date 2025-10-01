@@ -28,6 +28,7 @@ import {
   Check
 } from 'lucide-react';
 import './AdminDashboard.css';
+import { api } from "./api";
 
 function AdminDashboard({ onLogout }) {
   const [registrations, setRegistrations] = useState([]);
@@ -44,6 +45,7 @@ function AdminDashboard({ onLogout }) {
   const [currentSchoolType, setCurrentSchoolType] = useState('');
   const [editingStatus, setEditingStatus] = useState(null);
   const [currentStatus, setCurrentStatus] = useState('');
+  const [currentHRStatus, setCurrentHRStatus] = useState('');
   const [editingHrReview, setEditingHrReview] = useState(null);
   const [currentHrReview, setCurrentHrReview] = useState('');
   const [editingHrAnswer, setEditingHrAnswer] = useState(null);
@@ -61,10 +63,10 @@ function AdminDashboard({ onLogout }) {
   const fetchRegistrations = async () => {
     try {
       setLoading(true);
-      const response =  await api.get('admin/getCandidatesHistory',{
+      const response =  await api.get('interview-sessions',{
         status: 'all'
       });
-      if (!response.ok) {
+      if (response.status_code !== 200 && response.status_code !== 201) {
         throw new Error('Failed to fetch registrations');
       }
       const result = await response;
@@ -81,38 +83,109 @@ function AdminDashboard({ onLogout }) {
         const hrReview = result.data.filter(r => (r.status === 'accepted' || r.status === 'rejected') && (r.hrReview === 'pending' || !r.hrReview)).length;
         const notAttempted = result.data.filter(r => r.status === 'not attempted').length;
         
-        const stats = {
-          total: total,
-          attempted: attempted,
-          hrReview: hrReview,
-          accepted: accepted,
-          rejected: rejected,
-          notAttempted: notAttempted
-        };
-        setStats(stats);
+        // const stats = {
+        //   total: total,
+        //   attempted: attempted,
+        //   hrReview: hrReview,
+        //   accepted: accepted,
+        //   rejected: rejected,
+        //   notAttempted: notAttempted
+        // };
+        // setStats(stats);
       } else {
         setRegistrations([]);
-        setStats({ total: 0, attempted: 0, hrReview: 0, accepted: 0, rejected: 0, notAttempted: 0 });
+        // setStats({ total: 0, attempted: 0, hrReview: 0, accepted: 0, rejected: 0, notAttempted: 0 });
       }
     } catch (err) {
       setError(err.message);
       setRegistrations([]);
-      setStats({ total: 0, attempted: 0, hrReview: 0, accepted: 0, rejected: 0, notAttempted: 0 });
+      // setStats({ total: 0, attempted: 0, hrReview: 0, accepted: 0, rejected: 0, notAttempted: 0 });
     } finally {
       setLoading(false);
     }
   };
+const saveStatus = async () => {
+    // if (!registrationId) return;
+    
+    try {
+      // const registration = registrations.find(r => 
+      //   r._id === registrationId || 
+      //   r.id === registrationId ||
+      //   r._id?.toString() === registrationId.toString() ||
+      //   r.id?.toString() === registrationId.toString()
+      // );
+      
+      // if (!registration) {
+      //   throw new Error('Registration not found');
+      // }
+      
+      // const backendId = registration.registrationId;
+      
+      // if (!backendId) {
+      //   await fetchRegistrations();
+      //   throw new Error('Invalid registration ID - data refreshed, please try again');
+      // }
+      
+       const response = await api.get('admin/adminDashboard');
 
+      const result = response;
+      
+      // if (!response.ok) {
+      //   console.error('Status update failed:', result);
+      //   console.error('Response status:', response.status);
+      //   throw new Error(result.detail || result.message || `HTTP error! status: ${response.status}`);
+      // }
+      
+      if (result.status_code == 200 || result.status_code == 201) {
+        // Update the local state with the new status
+        // setRegistrations(prev => prev.map(reg => 
+        //   (reg._id === registrationId || reg.id === registrationId)
+        //     ? { 
+        //         ...reg, 
+        //         status: currentStatus
+        //       }
+        //     : reg
+        // ));
+        
+        // // Update selectedRegistration if it's the same one being edited
+        // if (selectedRegistration && (selectedRegistration._id === registrationId || selectedRegistration.id === registrationId)) {
+        //   setSelectedRegistration(prev => ({
+        //     ...prev,
+        //     status: currentStatus
+        //   }));
+        // }
+        
+        // // Recalculate stats
+        // const updatedRegistrations = registrations.map(reg => 
+        //   (reg._id === registrationId || reg.id === registrationId)
+        //     ? { ...reg, status: currentStatus }
+        //     : reg
+        // );
+        const newStats = calculateStats(response);
+        // setStats(newStats);
+        
+        setEditingStatus(null);
+        setCurrentStatus('');
+      } else {
+        throw new Error(result.message || 'Failed to save status');
+      }
+    } catch (error) {
+      console.error('Error saving status:', error);
+      console.error('Full error object:', error);
+      alert(`Error: ${error.message || 'Failed to save status. Please try again.'}`);
+    }
+  };
   // Calculate statistics
   const calculateStats = (data) => {
-    const accepted = data.filter(r => r.status === 'accepted').length;
-    const rejected = data.filter(r => r.status === 'rejected').length;
-    const attempted = accepted + rejected;
-    const hrReview = data.filter(r => (r.status === 'accepted' || r.status === 'rejected') && (r.hrReview === 'pending' || !r.hrReview)).length;
-    const notAttempted = data.filter(r => r.status === 'not attempted').length;
+    const total = data.total_registrations;
+    const accepted = data.accepted;
+    const rejected = data.rejected;
+    const attempted = data.attempted;
+    const hrReview = data.hr_review_pending
+    const notAttempted = data.not_attended;
     
     const next = {
-      total: data.length,
+      total: total,
       attempted: attempted,
       hrReview: hrReview,
       accepted: accepted,
@@ -164,8 +237,8 @@ function AdminDashboard({ onLogout }) {
   const filteredRegistrations = registrations.filter(registration => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
-      (registration.name || '').toLowerCase().includes(searchLower) ||
-      (registration.email || '').toLowerCase().includes(searchLower) ||
+      (registration.candidate.user_name || '').toLowerCase().includes(searchLower) ||
+      (registration.candidate.email || '').toLowerCase().includes(searchLower) ||
       (registration.registrationId || '').toLowerCase().includes(searchLower);
     
     const matchesStatus = 
@@ -181,11 +254,13 @@ function AdminDashboard({ onLogout }) {
   const getStatusBadge = (status) => {
     const normalized = (status || '').toString().toLowerCase();
     const statusConfig = {
-      pending: { color: 'orange', icon: Clock, text: 'HR Review Pending' },
+      pending: { color: 'orange', icon: Clock, text: 'Pending' },
       processing: { color: 'blue', icon: RefreshCw, text: 'In Progress' },
       in_progress: { color: 'blue', icon: RefreshCw, text: 'In Progress' },
       completed: { color: 'green', icon: CheckCircle, text: 'Completed' },
       rejected: { color: 'red', icon: AlertCircle, text: 'Rejected' },
+      done: { color: 'green', icon: AlertCircle, text: 'Done' },
+
       // Explicit mapping for Not Attempted
       'not attempted': { color: 'orange', icon: Clock, text: 'Not Attempted' },
       not_attempted: { color: 'orange', icon: Clock, text: 'Not Attempted' },
@@ -204,16 +279,14 @@ function AdminDashboard({ onLogout }) {
 
   // Export data to CSV
   const exportToCSV = () => {
-  const headers = ['Name', 'Email', 'Registration ID', 'Status', 'Position Type', 'School Type', 'Submitted At', 'Summary'];
+  const headers = ['Name', 'Email',  'Status', 'Position Type', 'School Type', 'Submitted At'];
     const csvData = filteredRegistrations.map(reg => [
-      reg.name,
-      reg.email,
-      reg.registrationId,
+      reg.candidate.user_name,
+      reg.candidate.email,
       reg.status,
-      reg.positionType || '',
-      reg.schoolType || '',
-      new Date(reg.submittedAt).toLocaleDateString(),
-      reg.resumeData?.summary || ''
+      reg.teacher_type || '',
+      reg.school_type || '',
+      new Date(reg.created_at).toLocaleDateString()
     ]);
 
     const csvContent = [headers, ...csvData]
@@ -231,6 +304,7 @@ function AdminDashboard({ onLogout }) {
 
   useEffect(() => {
     fetchRegistrations();
+    saveStatus();
   }, []);
 
   if (loading) {
@@ -398,87 +472,7 @@ function AdminDashboard({ onLogout }) {
     }
   };
 
-  // Function to save status
-  const saveStatus = async (registrationId) => {
-    if (!registrationId) return;
-    
-    try {
-      const registration = registrations.find(r => 
-        r._id === registrationId || 
-        r.id === registrationId ||
-        r._id?.toString() === registrationId.toString() ||
-        r.id?.toString() === registrationId.toString()
-      );
-      
-      if (!registration) {
-        throw new Error('Registration not found');
-      }
-      
-      const backendId = registration.registrationId;
-      
-      if (!backendId) {
-        await fetchRegistrations();
-        throw new Error('Invalid registration ID - data refreshed, please try again');
-      }
-      
-      const response = await fetch(`http://localhost:8000/api/interview-registrations/${backendId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          status: currentStatus
-        })
-      });
-
-      const result = await response.json().catch(() => ({}));
-      
-      if (!response.ok) {
-        console.error('Status update failed:', result);
-        console.error('Response status:', response.status);
-        throw new Error(result.detail || result.message || `HTTP error! status: ${response.status}`);
-      }
-      
-      if (result.success) {
-        // Update the local state with the new status
-        setRegistrations(prev => prev.map(reg => 
-          (reg._id === registrationId || reg.id === registrationId)
-            ? { 
-                ...reg, 
-                status: currentStatus
-              }
-            : reg
-        ));
-        
-        // Update selectedRegistration if it's the same one being edited
-        if (selectedRegistration && (selectedRegistration._id === registrationId || selectedRegistration.id === registrationId)) {
-          setSelectedRegistration(prev => ({
-            ...prev,
-            status: currentStatus
-          }));
-        }
-        
-        // Recalculate stats
-        const updatedRegistrations = registrations.map(reg => 
-          (reg._id === registrationId || reg.id === registrationId)
-            ? { ...reg, status: currentStatus }
-            : reg
-        );
-        const newStats = calculateStats(updatedRegistrations);
-        setStats(newStats);
-        
-        setEditingStatus(null);
-        setCurrentStatus('');
-      } else {
-        throw new Error(result.message || 'Failed to save status');
-      }
-    } catch (error) {
-      console.error('Error saving status:', error);
-      console.error('Full error object:', error);
-      alert(`Error: ${error.message || 'Failed to save status. Please try again.'}`);
-    }
-  };
-
+ 
   // Function to save feedback
   const saveFeedback = async (registrationId) => {
     if (!registrationId) return;
@@ -563,78 +557,44 @@ function AdminDashboard({ onLogout }) {
     }
   };
 
+  const updateCandidateDetails = async (candidate) =>{
+          const response = await api.post('admin/recruiterUpdate', {
+  "sessionId": candidate.session_id,
+  "feedback": currentFeedback,
+  "status": currentStatus,
+  "school":candidate.school_type,
+   "role":candidate.teacher_type,
+   "hr_review": currentHRStatus
+
+            })
+          if ((response.status_code == 200)) {
+           alert('Details updated successfully');
+           fetchRegistrations();
+          }
+  }
+
   // Function to download individual registration report
-  const downloadRegistrationReport = (registration) => {
-    const reportContent = `
-INTERVIEW REGISTRATION REPORT
-============================
+  const downloadRegistrationReport = async (filename) => {
+  try {
+    const blob = await api.download("admin/downloadReport", {
+      filenames: [filename.file_link],
+    });
 
-Personal Information:
-- Name: ${registration.name || 'N/A'}
-- Email: ${registration.email || 'N/A'}
-- Registration ID: ${registration.registrationId || 'N/A'}
-- Status: ${registration.status || 'N/A'}
-- Submitted At: ${registration.submittedAt ? new Date(registration.submittedAt).toLocaleString() : 'N/A'}
-
-Resume Analysis:
-- Summary: ${registration.resumeData?.summary || 'Not available'}
-- Work Experience Summary: ${registration.workExperienceSummary || 'Not available'}
-
-AI Resume Verification:
-- Similarity Score: ${registration.resumeComparison?.similarityScore || 0}%
-- AI Recommendation: ${registration.resumeComparison?.recommendation || 'pending'}
-- Confidence: ${registration.resumeComparison?.confidence ? (registration.resumeComparison.confidence * 100).toFixed(0) + '%' : 'N/A'}
-- Overall Assessment: ${registration.resumeComparison?.overallAssessment || 'Not available'}
-
-Supporting Evidence:
-${registration.resumeComparison?.matchingPoints?.map(point => `- ${point}`).join('\n') || 'None'}
-
-Areas of Concern:
-${registration.resumeComparison?.discrepancies?.map(disc => `- ${disc}`).join('\n') || 'None'}
-
-Interview Q&A:
-${registration.interviewData?.questions?.map((q, idx) => 
-  `Q${idx + 1}: ${q?.question || '—'}\nA${idx + 1}: ${q?.answer || 'Not answered'}\n`
-).join('\n') || 'No interview questions recorded yet.'}
-
-Interview Details:
-- Started At: ${registration.interviewData?.startedAt ? new Date(registration.interviewData.startedAt).toLocaleString() : '—'}
-- Completed At: ${registration.interviewData?.completedAt ? new Date(registration.interviewData.completedAt).toLocaleString() : '—'}
-- Is Completed: ${registration.interviewData?.isCompleted ? 'Yes' : 'No'}
-
-Eligibility Assessment:
-- UPK Eligible: ${registration.interviewData?.upkEligible ? 'Yes' : 'No'}
-- Teacher Eligible: ${registration.interviewData?.teacherEligible ? 'Yes' : 'No'}
-- Substitute Eligible: ${registration.interviewData?.substituteEligible ? 'Yes' : 'No'}
-- Shift Available: ${registration.interviewData?.shiftAvailable ? 'Yes' : 'No'}
-- Diaper Comfortable: ${registration.interviewData?.diaperComfortable ? 'Yes' : 'No'}
-
-Role Recommendations:
-- Recommended Position: ${registration.positionType || 'Not determined'}
-- Recommended School Type: ${registration.schoolType || 'Not determined'}
-
-HR Feedback:
-${registration.feedback || 'No feedback provided yet.'}
-
-Additional Information:
-- Phone: ${registration.phone || '—'}
-- Location: ${registration.location || '—'}
-- Education Level: ${registration.educationLevel || '—'}
-- Has Resume: ${registration.resumeData?.filename ? 'Yes' : 'No'}
-${registration.resumeData?.filename ? `- Resume File: ${registration.resumeData.filename}` : ''}
-
-Report Generated: ${new Date().toLocaleString()}
-============================
-`;
-
-    const blob = new Blob([reportContent], { type: 'text/plain' });
+    // Create a download link
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `registration-report-${registration.registrationId || registration.name?.replace(/\s+/g, '-') || 'unknown'}-${new Date().toISOString().split('T')[0]}.txt`;
-    a.click();
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename.file_link);
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    link.remove();
     window.URL.revokeObjectURL(url);
-  };
+  } catch (error) {
+    console.error("Download failed:", error);
+  }
+};
 
   // Function to save HR answer to user question
   const saveHrAnswer = async (registrationId) => {
@@ -723,7 +683,36 @@ Report Generated: ${new Date().toLocaleString()}
             <RefreshCw size={20} />
             Refresh
           </button>
-          <button onClick={onLogout} className="logout-button">
+          <button onClick={async () => {
+              try {
+                const refreshToken = localStorage.getItem("jwtToken");
+                if (refreshToken) {
+                  // 🔹 Call your API before redirect
+                 const response = await api.post('users/logout', {
+                  refresh_token: refreshToken
+                  })
+                
+          
+                // 🔹 Clear token
+                localStorage.removeItem("refresh");
+                localStorage.removeItem("jwtToken");
+                localStorage.removeItem("userInfo");
+          
+          
+                // 🔹 Navigate back
+                if (response.status_code == 200) {
+                 window.location.href = "/";
+                } else {
+                  window.location.href = "/";
+                }
+              }
+              } catch (err) {
+                console.error("Error completing interview:", err);
+                // You could still redirect even if API fails
+                // localStorage.removeItem("interviewSessionToken");
+                window.location.href = "/";
+              }
+            }} className="logout-button">
             <LogOut size={20} />
             Logout
           </button>
@@ -769,7 +758,7 @@ Report Generated: ${new Date().toLocaleString()}
           </div>
           <div className="stat-content">
             <h3>{stats?.accepted || 0}</h3>
-            <p>Accepted</p>
+            <p>Selected</p>
           </div>
         </div>
         <div className="stat-card rejected">
@@ -798,7 +787,7 @@ Report Generated: ${new Date().toLocaleString()}
           <Search className="search-icon" />
           <input
             type="text"
-            placeholder="Search by name, email, or registration ID..."
+            placeholder="Search by name, email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -812,9 +801,9 @@ Report Generated: ${new Date().toLocaleString()}
             className="filter-select"
           >
             <option value="all" className="filter-select1">All Status</option>
-            <option value="not attempted" className="filter-select1">Not Attempted</option>
-            <option value="accepted" className="filter-select1">Accepted</option>
-            <option value="rejected" className="filter-select1">Rejected</option>
+            <option value="Selected" className="filter-select1">Selected</option>
+            <option value="Rejected" className="filter-select1">Rejected</option>
+            {/* <option value="rejected" className="filter-select1">Rejected</option> */}
           </select>
         </div>
       </div>
@@ -839,39 +828,54 @@ Report Generated: ${new Date().toLocaleString()}
               <tr key={registration._id} className="registration-row">
                 <td className="name-cell">
                   <div className="name-info">
-                    <strong>{registration.name || 'N/A'}</strong>
+                    <strong>{registration.candidate.user_name || 'N/A'}</strong>
                   </div>
                 </td>
                 <td className="email-cell">
                   <div className="email-info">
                     <Mail size={14} />
-                    {registration.email || 'N/A'}
+                    {registration.candidate.email || 'N/A'}
                   </div>
                 </td>
                 <td className="status-cell">
                   {getStatusBadge(registration.status)}
                 </td>
                 <td className="pos-cell">
-                  {registration.positionType || '—'}
+                  {registration.teacher_type || '—'}
                 </td>
                 <td className="school-cell">
-                  {registration.schoolType || '—'}
+                  {registration.school_type || '—'}
                 </td>
                 <td className="hr-review-cell">
-                  <select
+                  {/* <select
                     value={registration.hrReview || 'pending'}
                     onChange={(e) => updateHrReview(registration.id || registration._id, e.target.value)}
                     className="hr-review-select"
                   >
                     <option value="pending">Pending</option>
                     <option value="done">Done</option>
-                  </select>
+                  </select> */}
+                  {getStatusBadge(registration.hr_review)}
                 </td>
                 <td className="date-cell">
-                  <div className="date-info">
+                  {/* <div className="date-info">
                     <Calendar size={14} />
-                    {new Date(registration.submittedAt).toLocaleDateString()}
-                  </div>
+                    {new Date(registration.created_at).toLocaleDateString()}
+                  </div> */}
+                  <div className="date-info">
+  <Calendar size={14} />
+  {new Date(registration.created_at).toLocaleString("en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "IST",
+     hour12: true
+  })}
+</div>
+
                 </td>
                 <td className="actions-cell">
                   <div className="action-buttons">
@@ -925,19 +929,10 @@ Report Generated: ${new Date().toLocaleString()}
                 {(editingRole === (selectedRegistration._id || selectedRegistration.id) || editingFeedback === (selectedRegistration._id || selectedRegistration.id) || editingStatus === (selectedRegistration._id || selectedRegistration.id) || editingHrAnswer === (selectedRegistration._id || selectedRegistration.id)) && (
                   <>
                     <button 
-                      onClick={() => {
-                        if (editingRole === (selectedRegistration._id || selectedRegistration.id)) {
-                          saveRoleDetails(selectedRegistration._id || selectedRegistration.id);
-                        }
-                        if (editingFeedback === (selectedRegistration._id || selectedRegistration.id)) {
-                          saveFeedback(selectedRegistration._id || selectedRegistration.id);
-                        }
-                        if (editingStatus === (selectedRegistration._id || selectedRegistration.id)) {
-                          saveStatus(selectedRegistration._id || selectedRegistration.id);
-                        }
-                        if (editingHrAnswer === (selectedRegistration._id || selectedRegistration.id)) {
-                          saveHrAnswer(selectedRegistration._id || selectedRegistration.id);
-                        }
+                      onClick={(e) => {
+                         e.stopPropagation();
+                         updateCandidateDetails(selectedRegistration);
+                         setShowDetails(false);
                       }}
                       className="action-btn save"
                       title="Save Changes"
@@ -953,6 +948,7 @@ Report Generated: ${new Date().toLocaleString()}
                         setCurrentFeedback('');
                         setEditingStatus(null);
                         setCurrentStatus('');
+                        setCurrentHRStatus('');
                         setEditingHrAnswer(null);
                         setCurrentHrAnswer('');
                       }}
@@ -972,16 +968,16 @@ Report Generated: ${new Date().toLocaleString()}
                 <div className="detail-grid">
                   <div className="detail-item">
                     <label className="black-label">Name:</label>
-                    <span>{selectedRegistration.name}</span>
+                    <span>{selectedRegistration.candidate.user_name}</span>
                   </div>
                   <div className="detail-item">
                     <label className="black-label">Email:</label>
-                    <span>{selectedRegistration.email}</span>
+                    <span>{selectedRegistration.candidate.email}</span>
                   </div>
-                  <div className="detail-item">
+                  {/* <div className="detail-item">
                     <label  className="black-label">Registration ID:</label>
                     <span>{selectedRegistration.registrationId}</span>
-                  </div>
+                  </div> */}
                   <div className="detail-item">
                     <label className="black-label">Status:</label>
                     {editingStatus === (selectedRegistration._id || selectedRegistration.id) ? (
@@ -991,7 +987,7 @@ Report Generated: ${new Date().toLocaleString()}
                         className="edit-select"
                         autoFocus
                       >
-                        <option value="accepted">Accepted</option>
+                        <option value="selected">Selected</option>
                         <option value="rejected">Rejected</option>
                       </select>
                     ) : (
@@ -1003,7 +999,7 @@ Report Generated: ${new Date().toLocaleString()}
                       </span>
                     )}
                   </div>
-                  <div className="detail-item">
+                  {/* <div className="detail-item">
                     <label className="black-label">Position Type:</label>
                     {editingRole === (selectedRegistration._id || selectedRegistration.id) ? (
                       <select
@@ -1027,8 +1023,8 @@ Report Generated: ${new Date().toLocaleString()}
                         {selectedRegistration.positionType || '—'}
                       </span>
                     )}
-                  </div>
-                  <div className="detail-item">
+                  </div> */}
+                  {/* <div className="detail-item">
                     <label className="black-label">School Type:</label>
                     {editingRole === (selectedRegistration._id || selectedRegistration.id) ? (
                       <select
@@ -1053,10 +1049,20 @@ Report Generated: ${new Date().toLocaleString()}
                         {selectedRegistration.schoolType || '—'}
                       </span>
                     )}
-                  </div>
+                  </div> */}
                   <div className="detail-item">
                     <label className="black-label">Submitted:</label>
-                    <span>{new Date(selectedRegistration.submittedAt).toLocaleString()}</span>
+                    {/* <span>{new Date(selectedRegistration.created_at).toLocaleString()}</span> */}
+                  <span>   {new Date(selectedRegistration.created_at).toLocaleString("en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "IST",
+     hour12: true
+  })}</span>
                   </div>
                 </div>
               </div>
@@ -1073,7 +1079,7 @@ Report Generated: ${new Date().toLocaleString()}
                         onChange={(e) => setCurrentFeedback(e.target.value)}
                         className="editable-textarea"
                         rows="4"
-                        placeholder="Enter HR feedback..."
+                        placeholder="Enter HR feedback  "
                       />
                     ) : (
                       <span 
@@ -1083,7 +1089,7 @@ Report Generated: ${new Date().toLocaleString()}
                           setCurrentFeedback(selectedRegistration.feedback || '');
                         }}
                       >
-                        {selectedRegistration.feedback || 'Click to add feedback...'}
+                        {selectedRegistration.feedback || 'Click to add feedback '}
                       </span>
                     )}
                   </div>
@@ -1197,31 +1203,54 @@ Report Generated: ${new Date().toLocaleString()}
               <div className="detail-section">
                 <h3>Interview Q&A</h3>
                 <div className="detail-grid">
-                  {(selectedRegistration.interviewData?.questions || []).length === 0 ? (
+                  {(selectedRegistration.conversation || []).length === 0 ? (
                     <div className="detail-item full-width">
                       <span>No interview questions recorded yet.</span>
                     </div>
                   ) : (
-                    selectedRegistration.interviewData?.questions?.map((q, idx) => (
+                    selectedRegistration.conversation?.map((q, idx) => (
                       <div key={idx} className="detail-item full-width qa-item">
                         <label className="black-label">Q{idx + 1}: {q?.question || '—'}</label>
-                        <div className="answer-text">{q?.answer ? q.answer : 'Not answered'}</div>
+                        <div className="answer-text">{q?.user_response ? q.user_response : 'Not answered'}</div>
                       </div>
                     ))
                   )}
                   <div className="detail-item">
                     <label className="black-label">Interview Started:</label>
-                    <span>{selectedRegistration.interviewData?.startedAt ? new Date(selectedRegistration.interviewData.startedAt).toLocaleString() : '—'}</span>
+                    <span>{selectedRegistration.candidate.interview_starting_time ? new Date(selectedRegistration.candidate.interview_starting_time).toLocaleString("en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "IST",
+     hour12: true
+  }) : '—'}</span>
                   </div>
                   <div className="detail-item">
                     <label className="black-label">Interview Completed:</label>
-                    <span>{selectedRegistration.interviewData?.completedAt ? new Date(selectedRegistration.interviewData.completedAt).toLocaleString() : '—'}</span>
+                    <span>
+  {selectedRegistration?.created_at
+    ? new Date(selectedRegistration.created_at).toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZone: "IST",
+     hour12: true
+      })
+    : "—"}
+</span>
+
                   </div>
                 </div>
               </div>
 
               {/* Eligibility Tags Section */}
-              <div className="detail-section">
+              {/* <div className="detail-section">
                 <h3>Eligibility Assessment</h3>
                 <div className="detail-grid">
                   <div className="detail-item">
@@ -1255,7 +1284,7 @@ Report Generated: ${new Date().toLocaleString()}
                     </span>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Role Recommendations Section */}
               <div className="detail-section">
@@ -1263,23 +1292,23 @@ Report Generated: ${new Date().toLocaleString()}
                 <div className="detail-grid">
                   <div className="detail-item">
                     <label className="black-label">Recommended Position:</label>
-                    <span className="position-type">{selectedRegistration.positionType || 'Not determined'}</span>
+                    <span className="position-type">{selectedRegistration.teacher_type || 'Not determined'}</span>
                   </div>
                   <div className="detail-item">
                     <label className="black-label">Recommended School Type:</label>
-                    <span className="school-type">{selectedRegistration.schoolType || 'Not determined'}</span>
+                    <span className="school-type">{selectedRegistration.school_type || 'Not determined'}</span>
                   </div>
-                  <div className="detail-item full-width">
+                  {/* <div className="detail-item full-width">
                     <label className="black-label">Work Experience Summary:</label>
                     <span>{selectedRegistration.workExperienceSummary || 'Not available'}</span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
               {/* HR Feedback Section */}
-              {selectedRegistration.feedback && (
-                <div className="detail-section">
-                  <h3>HR Feedback</h3>
+   
+                {/* <div className="detail-section">
+                  <h3>HR Review Status</h3>
                   <div className="detail-grid">
                     <div className="detail-item full-width">
                       <label className="black-label">Feedback:</label>
@@ -1288,11 +1317,32 @@ Report Generated: ${new Date().toLocaleString()}
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                </div> */}
+      {/*  */}
+       <div className="detail-item">
+                    <label className="black-label">HR Review Status:</label>
+                    {editingStatus === (selectedRegistration._id || selectedRegistration.id) ? (
+                      <select
+                        value={currentHRStatus}
+                        onChange={(e) => setCurrentHRStatus(e.target.value)}
+                        className="edit-select"
+                        autoFocus
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Done">Done</option>
+                      </select>
+                    ) : (
+                      <span onClick={() => {
+                        setEditingStatus(selectedRegistration._id || selectedRegistration.id);
+                        setCurrentHRStatus(selectedRegistration.hr_review);
+                      }} className="editable-cell" title="Click to edit">
+                        {getStatusBadge(selectedRegistration.hr_review)}
+                      </span>
+                    )}
+                  </div>
 
               {/* Additional Details Section */}
-              <div className="detail-section">
+              {/* <div className="detail-section">
                 <h3>Additional Information</h3>
                 <div className="detail-grid">
                   <div className="detail-item">
@@ -1320,7 +1370,7 @@ Report Generated: ${new Date().toLocaleString()}
                     </div>
                   )}
                 </div>
-              </div>
+              </div> */}
             </div>
 
             <div className="modal-footer">

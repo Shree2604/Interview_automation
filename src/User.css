@@ -1294,6 +1294,7 @@
 
 .interview-header-content {
   max-width: 1400px;
+  width: max-content;
   margin: 0 auto;
   padding: 0 2rem;
   display: flex;
@@ -1422,12 +1423,12 @@
 }
 
 .avatar-circle.ai-avatar {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8, #1e40af);
+  /* background: linear-gradient(135deg, #3b82f6, #1d4ed8, #1e40af); */
   color: white;
 }
 
 .avatar-circle.user-avatar {
-  background: linear-gradient(135deg, #22c55e, #16a34a, #15803d);
+  /* background: linear-gradient(135deg, #22c55e, #16a34a, #15803d); */
   color: white;
 }
 
@@ -1730,12 +1731,12 @@
 }
 
 .avatar-circle.ai-avatar {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8, #1e40af);
+  /* background: linear-gradient(135deg, #3b82f6, #1d4ed8, #1e40af); */
   color: white;
 }
 
 .avatar-circle.user-avatar {
-  background: linear-gradient(135deg, #22c55e, #16a34a, #15803d);
+  /* background: linear-gradient(135deg, #22c55e, #16a34a, #15803d); */
   color: white;
 }
 

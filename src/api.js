@@ -1,16 +1,24 @@
-const API_BASE_URL = "http://13.232.165.226/api/"; // replace with your API URL
+const API_BASE_URL = "https://futuregenautomation.com/api/";
 
-// Get JWT from localStorage
 const getToken = () => localStorage.getItem("jwtToken");
 
-// Central fetch function
+
+const showLogoutPopup = () => {
+  alert("Your session has expired. Please log in again.");
+                localStorage.removeItem("refresh");
+                localStorage.removeItem("jwtToken");
+                localStorage.removeItem("userInfo");
+
+  window.location.href = "/"; 
+};
+
+
 const apiFetch = async (endpoint, options = {}) => {
   const token = getToken();
 
-  // Default headers
   const headers = {
     "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }), // include JWT if available
+    ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
 
@@ -19,13 +27,46 @@ const apiFetch = async (endpoint, options = {}) => {
     headers,
   });
 
-  // Handle errors globally
+  if (response.status === 401) {
+    showLogoutPopup();
+    throw new Error("Unauthorized - Session expired");
+  }
+
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "API request failed");
+    let errorMsg = "API request failed";
+    try {
+      const errorData = await response.json();
+      errorMsg = errorData.message || errorMsg;
+    } catch (_) {}
+    throw new Error(errorMsg);
   }
 
   return response.json();
+};
+
+// Special function for downloading files
+const apiDownload = async (endpoint, body) => {
+  const token = getToken();
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (response.status === 401) {
+    showLogoutPopup();
+    throw new Error("Unauthorized - Session expired");
+  }
+
+  if (!response.ok) {
+    throw new Error("File download failed");
+  }
+
+  return response.blob(); // <-- Return blob instead of JSON
 };
 
 export const api = {
@@ -33,5 +74,5 @@ export const api = {
   post: (endpoint, body) => apiFetch(endpoint, { method: "POST", body: JSON.stringify(body) }),
   put: (endpoint, body) => apiFetch(endpoint, { method: "PUT", body: JSON.stringify(body) }),
   delete: (endpoint) => apiFetch(endpoint, { method: "DELETE" }),
+  download: (endpoint, body) => apiDownload(endpoint, body),
 };
-

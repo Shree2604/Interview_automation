@@ -12,7 +12,8 @@ import ThankYou from './ThankYou';
 import './User.css';
 import MobileNumberScreen from './MobileNumber';
 import websocketService from "./WebsocketService";
-
+import defaultuser from "./assets/defaultuser.png";
+import bot1 from "./assets/bot1.jpg";
 const SpeechInterviewApp = ({ onLogout, currentUser }) => {
   const [currentStep, setCurrentStep] = useState('invitation');
   const [micPermission, setMicPermission] = useState(null);
@@ -66,7 +67,18 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
       }
     };
   }, []);
-
+const handleStartListening = () => {
+  if (!recognitionRef.current) {
+    setupSpeechRecognition(); // Initialize if not ready
+  }
+  try {
+    recognitionRef.current.start();
+  } catch (err) {
+    console.error("Failed to start recognition:", err);
+    setErrorMessage("Please allow microphone access.");
+    setHasError(true);
+  }
+};
   // Setup speech recognition
   const setupSpeechRecognition = useCallback(() => {
     console.log("🎤 Setting up speech recognition...");
@@ -74,10 +86,10 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
+      recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'en-US';
-
+      recognitionRef.current.maxAlternatives = 3;
       recognitionRef.current.onresult = (event) => {
         let finalTranscript = '';
         let interimTranscript = '';
@@ -90,9 +102,10 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
           }
         }
         
-        if (interimTranscript) {
-          setCurrentTranscript(interimTranscript);
-        }
+if (interimTranscript.trim()) {
+  setCurrentTranscript(interimTranscript.trim());
+}
+
         
         if (finalTranscript.trim()) {
           console.log("🎤 User final response:", finalTranscript.trim());
@@ -100,7 +113,6 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
           setCurrentTranscript('');
           setIsListening(false);
           setCanInteract(false);
-          
           // Send response to backend
           sendUserResponse(finalTranscript.trim());
         }
@@ -111,24 +123,44 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
         setIsListening(true);
       };
 
-      recognitionRef.current.onend = () => {
-        console.log("🎤 Recognition ended");
-        setIsListening(false);
+      // recognitionRef.current.onend = () => {
+      //   console.log("🎤 Recognition ended");
+      //   setIsListening(false);
         
-        // Only restart if we're in user-turn state and can interact
-        if (flowState === 'user-turn' && canInteract && !isAISpeaking) {
-          console.log("🔄 Auto-restarting recognition...");
-          setTimeout(() => {
-            if (canInteract && flowState === 'user-turn' && recognitionRef.current) {
-              try {
-                recognitionRef.current.start();
-              } catch (e) {
-                console.warn('Error restarting recognition:', e);
-              }
-            }
-          }, 500);
+      //   // Only restart if we're in user-turn state and can interact
+      //   if (flowState === 'user-turn' && canInteract && !isAISpeaking) {
+      //     console.log("🔄 Auto-restarting recognition...");
+      //     setTimeout(() => {
+      //       if (canInteract && flowState === 'user-turn' && recognitionRef.current) {
+      //         try {
+      //           recognitionRef.current.start();
+      //         } catch (e) {
+      //           console.warn('Error restarting recognition:', e);
+      //         }
+      //       }
+      //     }, 800);
+      //   }
+      // };
+recognitionRef.current.onend = () => {
+  console.log("🎤 Recognition ended");
+  setIsListening(false);
+
+  if (flowState === 'user-turn' && canInteract && !isAISpeaking) {
+    console.log("🔄 Trying to restart recognition...");
+    setTimeout(() => {
+      if (recognitionRef.current && !isListening) {
+        try {
+          recognitionRef.current.abort(); // ensure clean stop
+          recognitionRef.current.start();
+        } catch (e) {
+          console.warn('⚠️ Restart blocked:', e.message);
         }
-      };
+      }
+    }, 1200); // increase timeout for mobile
+  }
+};
+
+
 
       recognitionRef.current.onerror = (event) => {
         console.error('🚫 Speech recognition error:', event.error);
@@ -184,13 +216,28 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
       },
       () => console.log("✅ Connected to server"),
       () =>{ console.log("❌ Connection closed");
+     setTimeout(() => {
+      console.log("✅ Going to thank you screen");
+      setCurrentStep('thankyou');
+       if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.warn('Error stopping recognition:', e);
+      }
+    }
+    }, 6000);
       },
       (err) => console.error("❌ WebSocket Error:", err)
     );
 
-    return () => {
-      websocketService.close();
-    };
+return () => {
+  if (process.env.NODE_ENV === 'production') {
+    websocketService.close();
+  }
+};
+
+
   }, []);
 
   // Start interview flow when messages are received
@@ -256,7 +303,7 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
           console.log("⚠️ Question 2 not available yet, waiting...");
           // Keep waiting for second message
           const checkInterval = setInterval(() => {
-            if (storedMessages.length >= 2) {
+            if (storedMessages.length) {
               clearInterval(checkInterval);
               console.log("🎯 Found Question 2, playing now");
               setFlowState('playing-q2');
@@ -340,19 +387,9 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
               }
             }, 1000);
           });
-        if(storedMessages[storedMessages.length-1].includes("Thanks")){
-           setTimeout(() => {
-      console.log("✅ Going to thank you screen");
-      setCurrentStep('thankyou');
-       if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.warn('Error stopping recognition:', e);
-      }
-    }
-    }, 5000);
-        }
+        // if(storedMessages[storedMessages.length-1].includes("Thank")){
+       
+        // }
  });
   // Cleanup
   useEffect(() => {
@@ -737,7 +774,7 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
     const getCurrentUserText = () => {
       if (currentTranscript) return currentTranscript;
       const lastUserMessage = [...conversation].reverse().find(msg => msg.speaker === 'human');
-      return lastUserMessage ? lastUserMessage.text : 'Waiting for your turn to speak... 🤔';
+      return lastUserMessage ? lastUserMessage.text : 'Wait for your turn to speak...';
     };
 
     const aiText = getCurrentAIText();
@@ -753,7 +790,7 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
               Screening Round Interview
             </h1>
             <div className="interview-time">
-              {new Date().toLocaleTimeString()}
+              Started At: {new Date().toLocaleTimeString()}
             </div>
           </div>
         </div>
@@ -767,7 +804,7 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
                 <div className={`avatar-circle ai-avatar transition-all duration-300 ${
                   isAISpeaking ? 'speaking' : ''
                 }`}>
-                  {isAISpeaking ? '🗣️' : '🤖'}
+                  <img src={bot1} alt="Logo" width="200" />
                 </div>
               </div>
               
@@ -791,7 +828,7 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
                 <div className={`avatar-circle user-avatar transition-all duration-300 ${
                   (isListening || currentTranscript) ? 'speaking' : ''
                 }`}>
-                  {(isListening || currentTranscript) ? '🎤' : '👤'}
+                  <img src={defaultuser} alt="Logo" />
                 </div>
               </div>
               

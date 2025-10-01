@@ -7,7 +7,6 @@ import './App.css';
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
   useEffect(() => {
     // Check for existing authentication on app load
     const checkExistingAuth = () => {
@@ -55,14 +54,35 @@ function App() {
   const handleLogout = () => {
     console.log('Logging out user');
     
-    try {
+   async () => { try {
       setCurrentUser(null);
+       const refreshToken = localStorage.getItem("jwtToken");
+      
+            if (refreshToken) {
+              // 🔹 Call your API before redirect
+             const response = await api.post('users/logout', {
+              refresh_token: refreshToken
+              })
+            }
+      
+            // 🔹 Clear token
+            localStorage.removeItem("refresh");
+            localStorage.removeItem("jwtToken");
+            localStorage.removeItem("userInfo");
+      
+      
+            // 🔹 Navigate back
+            if (response.status_code == 200) {
+             window.location.href = "/";
+            } else {
+              window.location.href = "/";
+            }
       localStorage.removeItem('userInfo');
       console.log('Logout successful');
     } catch (error) {
       console.error('Error during logout:', error);
     }
-  };
+  }};
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -109,6 +129,7 @@ function App() {
     console.log('Rendering User component for regular user');
     return <User onLogout={handleLogout} currentUser={currentUser} />;
   }
+  
 }
 
 export default App;
