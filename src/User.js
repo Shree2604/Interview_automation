@@ -284,6 +284,17 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
   };
 
   const handleStartListening = () => {
+    // CRITICAL: Never start recognition if TTS is active
+    if (isAISpeaking) {
+      console.log("❌ Cannot start recognition - TTS is active");
+      return;
+    }
+    
+    // CRITICAL: Cancel any ongoing speech synthesis first
+    if (synthRef.current) {
+      synthRef.current.cancel();
+    }
+    
     if (!recognitionRef.current) {
       setupSpeechRecognition();
     }
@@ -294,6 +305,7 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
     }
     
     try {
+      console.log("🎤 Starting speech recognition (TTS confirmed stopped)");
       isManualStopRef.current = false;
       restartAttemptRef.current = 0;
       lastFinalTranscriptRef.current = '';
@@ -304,6 +316,11 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
       if (err.message && err.message.includes('already started')) {
         recognitionActiveRef.current = true;
         setIsListening(true);
+      } else if (err.message && err.message.includes('recording')) {
+        // Chrome mobile specific error
+        console.error("🚫 Chrome is already recording - TTS/STT overlap detected!");
+        setErrorMessage("Please wait for the AI to finish speaking before trying again.");
+        setTimeout(() => setErrorMessage(''), 3000);
       } else {
         setErrorMessage("Please allow microphone access.");
         setHasError(true);
@@ -387,21 +404,34 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
   const playQuestion = useCallback((questionText) => {
     console.log("🗣️ Playing question");
     
+    // CRITICAL: Ensure no recognition is running
+    isManualStopRef.current = true;
+    if (recognitionRef.current && recognitionActiveRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.warn('Error stopping recognition before question:', e);
+      }
+    }
+    
     setFlowState('ai-speaking');
     setCurrentAIContent(questionText);
     addToConversation('ai', questionText);
+    setIsListening(false);
+    setCanInteract(false);
     
     speakText(questionText, () => {
       console.log("✅ Question finished, enabling user interaction");
       
+      // CRITICAL: Only enable user interaction after TTS completely ends
       setFlowState('user-turn');
       setCanInteract(true);
       setIsAISpeaking(false);
       
-      // Auto-start listening after 500ms
+      // Auto-start listening with proper delay
       setTimeout(() => {
-        if (recognitionRef.current && speechRecognitionReady) {
-          console.log("🎤 Auto-starting listening...");
+        if (recognitionRef.current && speechRecognitionReady && !isAISpeaking) {
+          console.log("🎤 Auto-starting listening after TTS completion...");
           handleStartListening();
         }
       }, 500);
@@ -515,10 +545,16 @@ const SpeechInterviewApp = ({ onLogout, currentUser }) => {
       };
       
       utterance.onend = () => {
-        console.log("🗣️ Speech synthesis ended");
+        console.log("🗣️ Speech synthesis ended - ready for recognition");
         setIsAISpeaking(false);
+        
+        // CRITICAL: Only call callback after TTS completely finishes
         if (onEndCallback) {
-          setTimeout(onEndCallback, 200);
+          // Small delay to ensure TTS resources are fully released
+          setTimeout(() => {
+            console.log("🔄 TTS cleanup complete, executing callback");
+            onEndCallback();
+          }, 300);
         }
       };
       
